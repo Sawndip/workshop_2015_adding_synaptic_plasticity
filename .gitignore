@@ -1,2 +1,5 @@
-.pyc
+# Ignore compiled byte code
+*.pyc
 
+# Ignore setuptools
+*.egg-info/

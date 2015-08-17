@@ -1,0 +1,3 @@
+# Ignore compiler output
+*.o
+*.txt

@@ -1,5 +1,5 @@
-MODELS = IF_curr_exp_stdp_mad_pair_additive
-BUILD_DIRS := $(addprefix builds/, $(MODELS))
+MODELS = neuron
+BUILD_DIRS := $(addprefix src/, $(MODELS))
 
 all: $(BUILD_DIRS)
 	for d in $(BUILD_DIRS); do (cd $$d; "$(MAKE)") || exit $$?; done
