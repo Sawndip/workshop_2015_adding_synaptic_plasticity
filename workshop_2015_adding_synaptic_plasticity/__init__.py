@@ -1,4 +1,4 @@
-from workshop_2015_adding_synaptic_plasticity import model_binaries
+import model_binaries
 
 
 def _init_module():
@@ -12,4 +12,4 @@ def _init_module():
 
 _init_module()
 
-from spike_pair_time_dependency import SpikePairTimeDependency
+from spike_pair_time_dependency import SpikePairTimeDependency as SpikePairRule
