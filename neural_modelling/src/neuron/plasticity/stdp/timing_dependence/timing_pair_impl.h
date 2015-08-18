@@ -22,122 +22,135 @@ typedef int16_t pre_trace_t;
 // Macros
 //---------------------------------------
 // Exponential decay lookup parameters
-#define TAU_PLUS_TIME_SHIFT 0
-#define TAU_PLUS_SIZE 256
+#define TAU_X_LUT_SHIFT 0
+#define TAU_X_LUT_SIZE 256
 
-#define TAU_MINUS_TIME_SHIFT 0
-#define TAU_MINUS_SIZE 256
+#define TAU_Y_LUT_SHIFT 0
+#define TAU_Y_LUT_SIZE 256
 
 // Helper macros for looking up decays
-#define DECAY_LOOKUP_TAU_PLUS(time) \
-    maths_lut_exponential_decay( \
-        time, TAU_PLUS_TIME_SHIFT, TAU_PLUS_SIZE, tau_plus_lookup)
-#define DECAY_LOOKUP_TAU_MINUS(time) \
-    maths_lut_exponential_decay( \
-        time, TAU_MINUS_TIME_SHIFT, TAU_MINUS_SIZE, tau_minus_lookup)
+#define DECAY_TAU_X(t) \
+    maths_lut_exponential_decay(t, TAU_X_LUT_SHIFT, TAU_X_LUT_SIZE, tau_x_lut)
+#define DECAY_TAU_Y(t) \
+    maths_lut_exponential_decay(t, TAU_Y_LUT_SHIFT, TAU_Y_LUT_SIZE, tau_y_lut)
 
 //---------------------------------------
 // Externals
 //---------------------------------------
-extern int16_t tau_plus_lookup[TAU_PLUS_SIZE];
-extern int16_t tau_minus_lookup[TAU_MINUS_SIZE];
+extern int16_t tau_x_lut[TAU_X_LUT_SIZE];
+extern int16_t tau_y_lut[TAU_Y_LUT_SIZE];
 
 //---------------------------------------
 // Timing dependence inline functions
 //---------------------------------------
-static inline post_trace_t timing_get_initial_post_trace() {
+static inline post_trace_t timing_get_initial_post_trace()
+{
     return 0;
 }
-
 //---------------------------------------
-static inline post_trace_t timing_add_post_spike(
-        uint32_t time, uint32_t last_time, post_trace_t last_trace) {
-
+static inline post_trace_t timing_add_post_spike(uint32_t time,
+    uint32_t last_time, post_trace_t last_trace)
+{
     // Get time since last spike
     uint32_t delta_time = time - last_time;
 
-    // Decay previous o1trace
-    int32_t new_o1_trace = STDP_FIXED_MUL_16X16(last_trace,
-            DECAY_LOOKUP_TAU_MINUS(delta_time));
+    // Decay previous trace (y)
+    int32_t new_y = STDP_FIXED_MUL_16X16(last_trace, DECAY_TAU_Y(delta_time));
 
     // Add energy caused by new spike to trace
-    new_o1_trace += STDP_FIXED_POINT_ONE;
+    new_y += STDP_FIXED_POINT_ONE;
 
-    log_debug("\tdelta_time=%d, o1=%d\n", delta_time, new_o1_trace);
+    log_debug("\tdelta_time=%d, y=%d\n", delta_time, new_y);
 
     // Return new trace_value
-    return (post_trace_t)new_o1_trace;
+    return (post_trace_t)new_y;
 }
 
 //---------------------------------------
-static inline pre_trace_t timing_add_pre_spike(
-        uint32_t time, uint32_t last_time, pre_trace_t last_trace, bool flush) {
-
+static inline pre_trace_t timing_add_pre_spike(uint32_t time,
+    uint32_t last_time, pre_trace_t last_trace, bool flush)
+{
     // Get time since last spike
     uint32_t delta_time = time - last_time;
 
-    // Decay previous r1 trace
-    int32_t new_r1_trace = STDP_FIXED_MUL_16X16(
-        last_trace, DECAY_LOOKUP_TAU_PLUS(delta_time));
+    // Decay previous x trace
+    int32_t new_x = STDP_FIXED_MUL_16X16(last_trace, DECAY_TAU_X(delta_time));
 
     // If this isn't a flush, add energy caused by new spike to trace
     if(!flush)
     {
-        new_r1_trace += STDP_FIXED_POINT_ONE;
+        new_x += STDP_FIXED_POINT_ONE;
     }
 
-    log_debug("\tdelta_time=%u, r1=%d\n", delta_time, new_r1_trace);
+    log_debug("\tdelta_time=%u, x=%d\n", delta_time, new_x);
 
     // Return new trace_value
-    return (pre_trace_t)new_r1_trace;
+    return (pre_trace_t)new_x;
 }
 
 //---------------------------------------
-static inline update_state_t timing_apply_pre_spike(
-        uint32_t time, pre_trace_t trace, uint32_t last_pre_time,
-        pre_trace_t last_pre_trace, uint32_t last_post_time,
-        post_trace_t last_post_trace, update_state_t previous_state) {
+static inline update_state_t timing_apply_pre_spike(uint32_t time,
+    pre_trace_t trace, uint32_t last_pre_time, pre_trace_t last_pre_trace,
+    uint32_t last_post_time, post_trace_t last_post_trace,
+    update_state_t previous_state)
+{
     use(&trace);
     use(last_pre_time);
     use(&last_pre_trace);
 
-    // Get time of event relative to last post-synaptic event
-    uint32_t time_since_last_post = time - last_post_time;
-    if (time_since_last_post > 0) {
-        int32_t decayed_o1 = STDP_FIXED_MUL_16X16(
-            last_post_trace, DECAY_LOOKUP_TAU_MINUS(time_since_last_post));
+    // Get time of pre-synaptic spike relative
+    // to time of last post-synaptic spike
+    uint32_t delta_t = time - last_post_time;
 
-        log_debug("\t\t\ttime_since_last_post_event=%u, decayed_o1=%d\n",
-                  time_since_last_post, decayed_o1);
+    // If spikes are not co-incident
+    if (delta_t > 0)
+    {
+        // Calculate y(time) = y(last_post_time) * e^(-delta_t/tau_y)
+        int32_t y = STDP_FIXED_MUL_16X16(last_post_trace,
+            DECAY_TAU_Y(delta_t));
 
-        // Apply depression to state (which is a weight_state)
-        return weight_one_term_apply_depression(previous_state, decayed_o1);
-    } else {
+        log_debug("\t\t\tdelta_t=%u, y=%d\n", delta_t, y);
+
+        // Return synaptic state after applying depression
+        return weight_one_term_apply_depression(previous_state, y);
+    }
+    // Otherwise, return unmodified synaptic state
+    else
+    {
         return previous_state;
     }
 }
 
 //---------------------------------------
 static inline update_state_t timing_apply_post_spike(
-        uint32_t time, post_trace_t trace, uint32_t last_pre_time,
-        pre_trace_t last_pre_trace, uint32_t last_post_time,
-        post_trace_t last_post_trace, update_state_t previous_state) {
+    uint32_t time, post_trace_t trace, uint32_t last_pre_time,
+    pre_trace_t last_pre_trace, uint32_t last_post_time,
+    post_trace_t last_post_trace, update_state_t previous_state)
+{
     use(&trace);
     use(last_post_time);
     use(&last_post_trace);
 
-    // Get time of event relative to last pre-synaptic event
-    uint32_t time_since_last_pre = time - last_pre_time;
-    if (time_since_last_pre > 0) {
-        int32_t decayed_r1 = STDP_FIXED_MUL_16X16(
-            last_pre_trace, DECAY_LOOKUP_TAU_PLUS(time_since_last_pre));
+    // Get time of post-synaptic spike relative
+    // to time of last pre-synaptic spike
+    uint32_t delta_t = time - last_pre_time;
 
-        log_debug("\t\t\ttime_since_last_pre_event=%u, decayed_r1=%d\n",
-                  time_since_last_pre, decayed_r1);
+    // If spikes are not co-incident
+    if (delta_t > 0)
+    {
+        // Calculate x(time) = x(last_pre_time) * e^(-delta_t/tau_x)
+        int32_t x = STDP_FIXED_MUL_16X16(last_pre_trace,
+            DECAY_TAU_X(delta_t));
 
-        // Apply potentiation to state (which is a weight_state)
-        return weight_one_term_apply_potentiation(previous_state, decayed_r1);
-    } else {
+        log_debug("\t\t\tdelta_t=%u, x=%d\n",
+                  delta_t, x);
+
+        // Apply potentiation to synapse state
+        return weight_one_term_apply_potentiation(previous_state, x);
+    }
+    // Otherwise, return unmodified synaptic state
+    else
+    {
         return previous_state;
     }
 }

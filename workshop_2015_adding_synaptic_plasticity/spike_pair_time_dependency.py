@@ -8,36 +8,40 @@ from spynnaker.pyNN.models.neural_properties.synapse_dynamics\
 import logging
 logger = logging.getLogger(__name__)
 
+# ----------------------------------------------------------------------------
 # Constants
-# **NOTE** these should be passed through magical per-vertex build setting
-# thing
-LOOKUP_TAU_PLUS_SIZE = 256
-LOOKUP_TAU_PLUS_SHIFT = 0
-LOOKUP_TAU_MINUS_SIZE = 256
-LOOKUP_TAU_MINUS_SHIFT = 0
+# ----------------------------------------------------------------------------
+TAU_X_LUT_SHIFT = 0
+TAU_X_LUT_SIZE = 256
 
+TAU_Y_LUT_SHIFT = 0
+TAU_Y_LUT_SIZE = 256
 
+# ----------------------------------------------------------------------------
+# SpikePairTimeDependency
+# ----------------------------------------------------------------------------
 class SpikePairTimeDependency(AbstractTimeDependency):
 
-    def __init__(self, tau_plus=20.0, tau_minus=20.0):
+    def __init__(self, tau_x=20.0, tau_y=20.0):
         AbstractTimeDependency.__init__(self)
 
-        self._tau_plus = tau_plus
-        self._tau_minus = tau_minus
+        self.tau_x = tau_x
+        self.tau_y = tau_y
 
     def __eq__(self, other):
         if (other is None) or (not isinstance(other, SpikePairTimeDependency)):
             return False
-        return ((self._tau_plus == other.tau_plus) and
-                (self._tau_minus == other.tau_minus))
+        return ((self.tau_x == other.tau_x) and
+                (self.tau_y == other.tau_y))
 
-    def create_synapse_row_io(
-            self, synaptic_row_header_words, dendritic_delay_fraction):
+    def create_synapse_row_io(self, synaptic_row_header_words,
+                              dendritic_delay_fraction):
         return PlasticWeightSynapseRowIo(
             synaptic_row_header_words, dendritic_delay_fraction)
 
     def get_params_size_bytes(self):
-        return 2 * (LOOKUP_TAU_PLUS_SIZE + LOOKUP_TAU_MINUS_SIZE)
+        # 2 bytes for each entry in each LUT
+        return 2 * (TAU_X_LUT_SIZE + TAU_Y_LUT_SIZE)
 
     def is_time_dependance_rule_part(self):
         return True
@@ -51,12 +55,12 @@ class SpikePairTimeDependency(AbstractTimeDependency):
                                       "supports 1ms timesteps")
 
         # Write lookup tables
-        plasticity_helpers.write_exp_lut(spec, self.tau_plus,
-                                         LOOKUP_TAU_PLUS_SIZE,
-                                         LOOKUP_TAU_PLUS_SHIFT)
-        plasticity_helpers.write_exp_lut(spec, self.tau_minus,
-                                         LOOKUP_TAU_MINUS_SIZE,
-                                         LOOKUP_TAU_MINUS_SHIFT)
+        plasticity_helpers.write_exp_lut(spec, self.tau_x,
+                                         TAU_X_LUT_SIZE,
+                                         TAU_X_LUT_SHIFT)
+        plasticity_helpers.write_exp_lut(spec, self.tau_y,
+                                         TAU_Y_LUT_SIZE,
+                                         TAU_Y_LUT_SHIFT)
 
     @property
     def num_terms(self):
@@ -70,11 +74,3 @@ class SpikePairTimeDependency(AbstractTimeDependency):
     def pre_trace_size_bytes(self):
         # A single 16-bit pre-synaptic trace is required
         return 2
-
-    @property
-    def tau_plus(self):
-        return self._tau_plus
-
-    @property
-    def tau_minus(self):
-        return self._tau_minus

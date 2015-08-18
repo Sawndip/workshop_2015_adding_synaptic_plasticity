@@ -17,7 +17,7 @@ time_between_pairs = 1000
 num_pairs = 60
 
 start_w = 0.5
-frequencies = [0.1, 10, 20, 40, 50]
+frequencies = [10, 20, 40, 50]
 delta_t = [-10, 10]
 
 def generate_fixed_frequency_test_data(frequency, first_spike_time, num_spikes):
@@ -72,11 +72,11 @@ for t in delta_t:
 
         # Plastic Connection between pre_pop and post_pop
         stdp_model = sim.STDPMechanism(
-            timing_dependence = workshop.SpikePairRule(tau_plus = 16.8, tau_minus = 33.7),
-            weight_dependence = sim.AdditiveWeightDependence(w_min = 0.0, w_max = 1.0, A_plus = 0.05, A_minus = 0.05)
+            timing_dependence = workshop.SpikePairRule(tau_x=16.8, tau_y=33.7),
+            weight_dependence = sim.AdditiveWeightDependence(w_min=0.0, w_max=1.0, A_plus=0.001, A_minus=0.001)
         )
 
-        projections[-1].append(sim.Projection(pre_pop, post_pop, sim.OneToOneConnector(weights = start_w),
+        projections[-1].append(sim.Projection(pre_pop, post_pop, sim.OneToOneConnector(weights=start_w),
             synapse_dynamics = sim.SynapseDynamics(slow = stdp_model)
         ))
 
@@ -98,18 +98,18 @@ sim.end(stop_on_board=True)
 #-------------------------------------------------------------------
 # Sjostrom et al. (2001) experimental data
 data_w = [
-    [ -0.29, -0.41, -0.34, 0.56, 0.75 ],
-    [ -0.04, 0.14, 0.29, 0.53, 0.56 ]
+    [ -0.41, -0.34, 0.56, 0.75 ],
+    [ 0.14, 0.29, 0.53, 0.56 ]
 ]
 data_e = [
-    [ 0.08, 0.11, 0.1, 0.32, 0.19 ],
-    [ 0.05, 0.1, 0.14, 0.11, 0.26 ]
+    [ 0.11, 0.1, 0.32, 0.19 ],
+    [ 0.1, 0.14, 0.11, 0.26 ]
 ]
 
 # Plot Frequency response
 figure, axis = pylab.subplots()
 axis.set_xlabel("Frequency/Hz")
-axis.set_ylabel(r"$(\frac{\Delta w_{ij}}{w_{ij}})$", rotation = "horizontal", size = "xx-large")
+axis.set_ylabel(r"$(\frac{\Delta w_{ij}}{w_{ij}})$", rotation="horizontal", size="xx-large")
 
 line_styles = ["--", "-"]
 for m_w, d_w, d_e, l in zip(weights, data_w, data_e, line_styles):
@@ -117,11 +117,11 @@ for m_w, d_w, d_e, l in zip(weights, data_w, data_e, line_styles):
     delta_w = [(w - start_w) / start_w for w in m_w]
 
     # Plot experimental data and error bars
-    axis.errorbar(frequencies, d_w, yerr = d_e, color = "black", linestyle = l, label = r"Experimental data, delta $(\Delta{t}=%dms)$" % t)
+    axis.errorbar(frequencies, d_w, yerr=d_e, color="black", linestyle=l, label=r"Experimental data, delta $(\Delta{t}=%dms)$" % t)
 
     # Plot model data
-    axis.plot(frequencies, delta_w, color = "blue", linestyle = l,label = r"Triplet rule, delta $(\Delta{t}=%dms)$" % t)
+    axis.plot(frequencies, delta_w, color="blue", linestyle=l, label=r"Triplet rule, delta $(\Delta{t}=%dms)$" % t)
 
-axis.legend(loc = "upper right", bbox_to_anchor = (1.0, 1.0))
+axis.legend(loc="upper right", bbox_to_anchor=(1.0, 1.0))
 
 pylab.show()
