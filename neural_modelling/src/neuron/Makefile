@@ -1,4 +1,4 @@
-MODELS = IF_curr_exp_stdp_mad_pair_additive
+MODELS = IF_curr_exp_stdp_mad_pair_additive IF_curr_exp_stdp_mad_triplet_additive
 BUILD_DIRS := $(addprefix builds/, $(MODELS))
 
 all: $(BUILD_DIRS)

@@ -12,4 +12,6 @@ def _init_module():
 
 _init_module()
 
+# Import rules with PyNNlike names
 from spike_pair_time_dependency import SpikePairTimeDependency as SpikePairRule
+from spike_triplet_time_dependency import SpikeTripletTimeDependency as SpikeTripletRule

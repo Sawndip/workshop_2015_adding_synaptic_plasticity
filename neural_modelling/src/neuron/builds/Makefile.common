@@ -14,6 +14,6 @@ EXTRA_STDP +=
 
 EXTRA_STDP_WEIGHT_DEPENDENCE += 
 
-EXTRA_STDP_TIMING_DEPENDENCE += $(BUILD_DIR)neuron/plasticity/stdp/timing_dependence/timing_pair_impl.o
+EXTRA_STDP_TIMING_DEPENDENCE += $(BUILD_DIR)neuron/plasticity/stdp/timing_dependence/timing_pair_impl.o $(BUILD_DIR)neuron/plasticity/stdp/timing_dependence/timing_triplet_impl.o
 
 include $(NEURAL_MODELLING_DIRS)/src/neuron/builds/Makefile.common

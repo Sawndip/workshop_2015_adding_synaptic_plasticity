@@ -72,7 +72,7 @@ for t in delta_t:
 
         # Plastic Connection between pre_pop and post_pop
         stdp_model = sim.STDPMechanism(
-            timing_dependence = workshop.SpikePairRule(tau_x=16.8, tau_y=33.7),
+            timing_dependence = workshop.SpikeTripletRule(tau_x=16.8, tau_y=33.7),
             weight_dependence = sim.AdditiveWeightDependence(w_min=0.0, w_max=1.0, A_plus=0.001, A_minus=0.001)
         )
 
