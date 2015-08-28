@@ -15,9 +15,13 @@ start_time = 100
 time_between_pairs = 1000
 num_pairs = 60
 
+# Running the experiment at 0.1Hz takes a long
+# time (10 minutes!) so set this to true to skip
+skip_low_frequency = True
+
 max_weight = 1.0
 
-frequencies = [10, 20, 40, 50]
+frequencies = [0.1, 10, 20, 40, 50]
 delta_t = [-10, 10]
 
 #-------------------------------------------------------------------
@@ -38,7 +42,7 @@ def generate_fixed_frequency_test_data(frequency, first_spike_time, num_spikes):
     return [first_spike_time + (s * interspike_delay) for s in range(num_spikes)]
 
 #-------------------------------------------------------------------
-# Experiment loop
+# Entry point
 #-------------------------------------------------------------------
 # Population parameters
 model = sim.IF_curr_exp
@@ -52,6 +56,10 @@ cell_params = {'cm'     : 0.25, # nF
             'v_rest'    : -65.0,
             'v_thresh'  : -55.4
             }
+
+# If we're skipping low frequencies, remove 1st frequency
+if skip_low_frequency:
+    frequencies = frequencies[1:]
 
 # SpiNNaker setup
 sim.setup(timestep=1.0, min_delay=1.0, max_delay=10.0)
@@ -132,13 +140,22 @@ sim.end(stop_on_board=True)
 #-------------------------------------------------------------------
 # Sjostrom et al. (2001) experimental data
 data_w = [
-    [ -0.41, -0.34, 0.56, 0.75 ],
-    [ 0.14, 0.29, 0.53, 0.56 ]
+    [ -0.29, -0.41, -0.34, 0.56, 0.75 ],
+    [ -0.04, 0.14, 0.29, 0.53, 0.56 ]
 ]
 data_e = [
-    [ 0.11, 0.1, 0.32, 0.19 ],
-    [ 0.1, 0.14, 0.11, 0.26 ]
+    [ 0.08, 0.11, 0.1, 0.32, 0.19 ],
+    [ 0.05, 0.1, 0.14, 0.11, 0.26 ]
 ]
+
+# If we're skipping the low frequencies,
+# also remove 1st experimental data point
+if skip_low_frequency:
+    data_w[0] = data_w[0][1:]
+    data_w[1] = data_w[1][1:]
+
+    data_e[0] = data_e[0][1:]
+    data_e[1] = data_e[1][1:]
 
 # Plot Frequency response
 figure, axis = pylab.subplots()
@@ -153,14 +170,17 @@ triplet_delta_w = [[(w - start_w) / start_w for w in m_w] for m_w in triplet_wei
 
 line_styles = ["--", "-"]
 for p_w, t_w, d_w, d_e, l, t in zip(pair_delta_w, triplet_delta_w, data_w, data_e, line_styles, delta_t):
+    # Generate descriptive string for delta
+    delta_description = "causal" if t > 0 else "anti-causal"
+
     # Plot experimental data and error bars
-    axis.errorbar(frequencies, d_w, yerr=d_e, color="grey", linestyle=l, label=r"Experimental data, delta $(\Delta{t}=%dms)$" % t)
+    axis.errorbar(frequencies, d_w, yerr=d_e, color="black", linestyle=l, label="Experimental data (%s)" % delta_description)
 
     # Plot model data
-    axis.plot(frequencies, p_w, color="blue", linestyle=l, label=r"Pair rule, delta $(\Delta{t}=%dms)$" % t)
-    axis.plot(frequencies, t_w, color="red", linestyle=l, label=r"Triplet rule, delta $(\Delta{t}=%dms)$" % t)
+    axis.plot(frequencies, p_w, color="blue", linestyle=l, label="Pair rule (%s)" % delta_description)
+    axis.plot(frequencies, t_w, color="red", linestyle=l, label="Triplet rule (%s)" % delta_description)
 
-axis.legend(loc="lower right")
+axis.legend(loc="upper left")
 
 # Calculate error
 pair_error = calculate_error(data_w[0] + data_w[1],
