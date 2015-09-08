@@ -94,19 +94,14 @@ static inline post_trace_t timing_add_post_spike(uint32_t time,
 
 //---------------------------------------
 static inline pre_trace_t timing_add_pre_spike(uint32_t time,
-    uint32_t last_time, pre_trace_t last_trace, bool flush)
+    uint32_t last_time, pre_trace_t last_trace)
 {
     // Get time since last spike
     uint32_t delta_time = time - last_time;
 
-    // Decay previous x trace
+    // Decay previous x trace and add energy caused by new spike to trace
     int32_t new_x = STDP_FIXED_MUL_16X16(last_trace, DECAY_TAU_X(delta_time));
-
-    // If this isn't a flush, add energy caused by new spike to trace
-    if(!flush)
-    {
-        new_x += STDP_FIXED_POINT_ONE;
-    }
+    new_x += STDP_FIXED_POINT_ONE;
 
     log_debug("\tdelta_time=%u, x=%d\n", delta_time, new_x);
 
